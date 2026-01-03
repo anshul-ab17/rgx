@@ -1,0 +1,142 @@
+rust cli:
+
+Rust is a systems programming language.
+It focuses on safety and performance.
+Memory safety without garbage collection.
+Rust is used for CLI tools.
+Many developers love Rust.
+
+pattern appears here for testing.
+Another normal line without match.
+Yet another line of plain text.
+
+Learning Rust requires patience.
+Ownership is Rust's unique feature.
+Borrowing and lifetimes are important.
+pattern shows up again in this line.
+
+CLI tools should be fast.
+Using BufReader improves performance.
+Using BufWriter avoids frequent flushes.
+pattern is found once more.
+
+Error handling in Rust uses Result and Option.
+anyhow simplifies error propagation.
+clap is used for argument parsing.
+indicatif provides progress bars.
+pattern inside documentation text.
+
+Large files should be streamed line by line.
+Reading entire files may waste memory.
+pattern testing continues.
+
+Debug logs should not mix with output.
+Use log crate for diagnostics.
+env_logger reads log level from env.
+pattern near logging explanation.
+
+Searching text is a common task.
+grep is a classic Unix tool.
+ripgrep is written in Rust.
+pattern exists in this context.
+
+File IO is slow compared to memory.
+Buffers reduce system calls.
+pattern helps verify matching logic.
+
+Concurrency is powerful in Rust.
+But simple CLI tools don’t need threads.
+pattern for final verification.
+
+End of the test file.
+pattern
+pattern again
+pattern one last time
+
+
+
+## Notes:
+
+1.     operating system usually represents command-line-arguments as a list of strings.
+        manually getting the args using os
+
+        use std::{path::PathBuf};
+        use clap::{Error, Parser};
+        #[derive(Parser)]
+        struct Cli{
+            syntax:String,
+            path:PathBuf
+        }
+        let syntax = env::args().nth(1).expect("no syntax!"); 
+        //std::env::args() that gives you an iterator of the given arguments.
+
+        let path = env::args().nth(2).expect("no path given");
+        let args= Cli{
+            // CLI arguments as a custom data type that represents the inputs to your program.
+            syntax,
+            path:PathBuf::from(path),
+        };
+ 
+2.     Parsing CLI arguments with Clap :  Search for a pattern in a file and display the lines that contain it.
+    let args = Cli::parse();
+
+3.  use a BufReader instead of read_to_string().
+  
+    let content = std::fs::read_to_string(&args.path).expect("could not read the file");
+    as it will read the whole file into memory, no matter how large the file may be. 
+
+    use std::io::BufReader;
+    let reader = BufReader::new(f); //  f=file::open('a.txt')?;
+
+4.  
+
+    fn main() -> Result<(), Box<dyn std::error::Error>> 
+
+    Result<T, io::Error> is for handling specific operations, while
+    Result<(), Box<dyn Error>> is ideal for propagating heterogeneous errors from main 
+
+    Box<dyn std::error::Error>  --
+    Box → heap allocation
+    dyn Error → any error type
+    generic “catch-all” error type
+
+
+5.   anyhow library has a neat solution for that:
+     Its Context trait can be used to 
+     add a description similar to our CustomError type
+
+     .map_err(|err| CustomError(format!("Error reading `{}`: {}", path, err)))?;
+                                vs
+        .with_context(|| format!("could not read file `{}`", path))?;
+    
+4.  
+    Printing to the terminal is surprisingly slow! If you call things like println! in a loop, it becomes bottleneck in an otherwise fast program. To speed this up, 
+
+
+    First, you might want to reduce the number of writes that actually “flush” to the terminal. 
+    
+    println! tells the system to flush to the terminal every time because it is common to print each new line. If you don’t need that, you can wrap your stdout handle in a BufWriter, which buffers up to 8 kB by default. 
+    
+    You can still call .flush() on this BufWriter when you want to print immediately.
+
+        use std::io::{self, Write};
+        let stdout = io::stdout(); // get the global stdout entity
+        let mut handle = io::BufWriter::new(stdout); // optional: wrap that handle in a buffer
+        writeln!(handle, "foo: {}", 42); // add `?` if you care about errors here
+
+
+        Second, it helps to acquire a lock on stdout (or stderr) and use writeln! to print to it directly. This prevents the system from locking and unlocking stdout over and over again.
+        use std::io::{self, Write};
+
+        let stdout = io::stdout(); // get the global stdout entity
+        let mut handle = stdout.lock(); // acquire a lock on it
+
+
+        or Bufwrite + stdout.lock:
+
+        let mut handle = io::BufWriter::new(stdout.lock());
+        handle.flush().unwrap();
+
+5.  Using the indicatif crate, you can add progress bars and little spinners to your program.
+
+
