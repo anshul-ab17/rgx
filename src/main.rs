@@ -44,17 +44,18 @@ fn main() -> Result<()> {
     let mut writer = BufWriter::new(stdout.lock());
 
     let mut matches = 0;
-
+    let pattern = args.pattern.to_lowercase();
     for line in reader.lines() {
         let line = line.context("failed to read line")?;
 
-        if line.contains(&args.pattern) {
+        if line.to_lowercase().contains(&pattern) {
             writeln!(writer, "{}", line)?;
             matches += 1;
         }
 
         progress_bar.tick();
     }
+
 
     writer.flush()?;
     progress_bar.finish_with_message("Search completed!");
